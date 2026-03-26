@@ -459,8 +459,8 @@
             <input type="range" id="split-slider" min="20" max="80" value="50" step="5" dir="ltr">
             <span class="split-lbl" id="split-r">50%</span>
           </div>
-          <div style="display:flex;justify-content:space-between;font-size:10px;color:#bbb;margin-top:3px;padding:0 2px;direction:ltr">
-            <span>פרצוף ◀</span><span>▶ תמונה</span>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:#bbb;margin-top:3px;padding:0 2px;direction:ltr" id="split-hint">
+            <span id="split-hint-l">פרצוף ◀</span><span id="split-hint-r">▶ תמונה</span>
           </div>
         </div>
 
@@ -664,7 +664,7 @@ function updateFaceBadge(state, text) {
 function computeLayout(type, split) {
   const W = CFG.W, H = CFG.H, S = CFG.SEP;
   const slots = [], seps = [];
-  if (type === '2p' || type === '2o') {
+  if (type === '2p') {
     const sw = Math.floor((W - S) / 2);
     slots.push({x:0,        y:0,w:sw,          h:H});
     slots.push({x:sw+S,     y:0,w:W-sw-S,      h:H});
@@ -681,7 +681,7 @@ function computeLayout(type, split) {
       slots.push({x:i*(sw+S),y:0,w:sw,h:H});
       if (i < 3) seps.push({x:(i+1)*sw+i*S,y:0,w:S,h:H});
     }
-  } else if (type === 'po') {
+  } else if (type === 'po' || type === '2o') {
     const lw = Math.round((W - S) * split);
     const rw = W - S - lw;
     slots.push({x:0,   y:0,w:lw,h:H});
@@ -772,6 +772,16 @@ async function recomputeAllCrops() {
     const c = await autoCrop(entry, slot.w, slot.h);
     entry.crop = c; entry.autoCrop = {...c};
   }));
+}
+
+function updateSplitWrap(type) {
+  const show = type === 'po' || type === '2o';
+  document.getElementById('split-wrap').style.display = show ? 'block' : 'none';
+  if (show) {
+    const isPO = type === 'po';
+    document.getElementById('split-hint-l').textContent = isPO ? 'פרצוף ◀' : 'תמונה 1 ◀';
+    document.getElementById('split-hint-r').textContent = isPO ? '▶ תמונה' : '▶ תמונה 2';
+  }
 }
 
 // Synchronous crop update for split slider — no face detection, preserves center+zoom
@@ -1077,7 +1087,7 @@ function renderTypeButtons() {
     btn.innerHTML = TYPE_SVG[key] + `<span>${cfg.label}</span>`;
     btn.addEventListener('click', async () => {
       S.cType = key;
-      document.getElementById('split-wrap').style.display = key === 'po' ? 'block' : 'none';
+      updateSplitWrap(key);
       renderTypeButtons();
       showPreviewSpinner(true);
       await recomputeAllCrops();
@@ -1124,7 +1134,7 @@ function renderImageCards() {
       renderUploadGrid();
       autoSelectType();
       if (S.images.length < 2) { goStep1(); return; }
-      document.getElementById('split-wrap').style.display = S.cType === 'po' ? 'block' : 'none';
+      updateSplitWrap(S.cType);
       showPreviewSpinner(true);
       await recomputeAllCrops();
       renderImageCards();
@@ -1179,7 +1189,7 @@ function renderImageCards() {
         if (ub) ub.parentElement.querySelectorAll('.tt-btn').forEach(x => x.classList.toggle('active', x.dataset.t === entry.type));
         autoSelectType();
         renderTypeButtons();
-        document.getElementById('split-wrap').style.display = S.cType === 'po' ? 'block' : 'none';
+        updateSplitWrap(S.cType);
         showPreviewSpinner(true);
         if (S.cType) {
           const layout = computeLayout(S.cType, S.split);
@@ -1351,7 +1361,7 @@ async function goStep1() {
 async function goStep2() {
   setStep(2);
   autoSelectType();
-  document.getElementById('split-wrap').style.display = S.cType === 'po' ? 'block' : 'none';
+  updateSplitWrap(S.cType);
   renderTypeButtons();
   renderImageCards();
   showPreviewSpinner(true);
