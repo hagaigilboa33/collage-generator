@@ -544,6 +544,7 @@ const S = {
   images: [],        // { id, file, el, type, jpegQ, crop, autoCrop, slotW, slotH }
   cType: null,
   split: 0.5,
+  poSwapped: false,
   faceReady: false,
   rendering: false,
 };
@@ -756,7 +757,7 @@ function getSlotImages() {
   if (S.cType === 'po' && S.images.length === 2) {
     const person = S.images.find(e => e.type === 'person');
     const object = S.images.find(e => e.type === 'object');
-    if (person && object) return [person, object];
+    if (person && object) return S.poSwapped ? [object, person] : [person, object];
   }
   return S.images;
 }
@@ -778,9 +779,13 @@ function updateSplitWrap(type) {
   const show = type === 'po' || type === '2o';
   document.getElementById('split-wrap').style.display = show ? 'block' : 'none';
   if (show) {
-    const isPO = type === 'po';
-    document.getElementById('split-hint-l').textContent = isPO ? 'פרצוף ◀' : 'תמונה 1 ◀';
-    document.getElementById('split-hint-r').textContent = isPO ? '▶ תמונה' : '▶ תמונה 2';
+    if (type === 'po') {
+      document.getElementById('split-hint-l').textContent = S.poSwapped ? 'תמונה ◀' : 'פרצוף ◀';
+      document.getElementById('split-hint-r').textContent = S.poSwapped ? '▶ פרצוף' : '▶ תמונה';
+    } else {
+      document.getElementById('split-hint-l').textContent = 'תמונה 1 ◀';
+      document.getElementById('split-hint-r').textContent = '▶ תמונה 2';
+    }
   }
 }
 
@@ -1087,6 +1092,7 @@ function renderTypeButtons() {
     btn.innerHTML = TYPE_SVG[key] + `<span>${cfg.label}</span>`;
     btn.addEventListener('click', async () => {
       S.cType = key;
+      S.poSwapped = false;
       updateSplitWrap(key);
       renderTypeButtons();
       showPreviewSpinner(true);
@@ -1113,7 +1119,8 @@ function renderImageCards() {
   cropInstances.clear();
   const list = document.getElementById('img-list');
   list.innerHTML = '';
-  S.images.forEach((entry, idx) => {
+  const orderedCards = getSlotImages();
+  orderedCards.forEach((entry, idx) => {
     const card = document.createElement('div');
     card.className = 'img-card';
     card.dataset.id = entry.id;
@@ -1125,7 +1132,7 @@ function renderImageCards() {
       <span class="img-card-name">${entry.file.name}</span>
       <div class="order-btns">
         <button class="btn-ord" data-dir="up" ${idx === 0 ? 'disabled' : ''} title="העבר למעלה">↑</button>
-        <button class="btn-ord" data-dir="dn" ${idx === S.images.length-1 ? 'disabled' : ''} title="העבר למטה">↓</button>
+        <button class="btn-ord" data-dir="dn" ${idx === orderedCards.length-1 ? 'disabled' : ''} title="העבר למטה">↓</button>
         <button class="btn-ord btn-card-remove" title="הסר תמונה">✕</button>
       </div>`;
     hdr.querySelector('.btn-card-remove').addEventListener('click', async () => {
@@ -1144,11 +1151,16 @@ function renderImageCards() {
     });
     hdr.querySelectorAll('.btn-ord[data-dir]').forEach(b => {
       b.addEventListener('click', async () => {
-        const dir = b.dataset.dir === 'up' ? -1 : 1;
-        const i   = S.images.indexOf(entry);
-        const ni  = i + dir;
-        if (ni < 0 || ni >= S.images.length) return;
-        [S.images[i], S.images[ni]] = [S.images[ni], S.images[i]];
+        if (S.cType === 'po') {
+          S.poSwapped = !S.poSwapped;
+          updateSplitWrap('po');
+        } else {
+          const dir = b.dataset.dir === 'up' ? -1 : 1;
+          const i   = S.images.indexOf(entry);
+          const ni  = i + dir;
+          if (ni < 0 || ni >= S.images.length) return;
+          [S.images[i], S.images[ni]] = [S.images[ni], S.images[i]];
+        }
         showPreviewSpinner(true);
         await recomputeAllCrops();
         renderImageCards();
@@ -1410,7 +1422,8 @@ function resetAll() {
   S.images.forEach(e => URL.revokeObjectURL(e.el.src));
   S.images = [];
   S.cType  = null;
-  S.split  = 0.5;
+  S.split     = 0.5;
+  S.poSwapped = false;
   cropInstances.clear();
   document.getElementById('upload-grid').innerHTML = '';
   document.getElementById('img-list').innerHTML = '';
