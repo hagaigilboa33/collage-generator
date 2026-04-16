@@ -507,7 +507,7 @@
       <span>משקל: <strong id="f-size">--</strong></span>
     </div>
     <div class="step-actions between">
-      <button class="btn btn-secondary" id="btn-restart">← התחל מחדש</button>
+      <button class="btn btn-secondary" id="btn-restart">← חזור לעריכה</button>
       <a class="btn btn-primary" id="dl-link" download="collage-calcalist.jpg">הורד JPEG ↓</a>
     </div>
   </section>
@@ -1498,7 +1498,7 @@ function init() {
   });
 
   // Step 3 actions
-  document.getElementById('btn-restart').addEventListener('click', resetAll);
+  document.getElementById('btn-restart').addEventListener('click', goStep2);
 
   // Start loading face-api (non-blocking)
   loadFaceApi();
